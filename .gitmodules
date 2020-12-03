@@ -1,0 +1,3 @@
+[submodule "paint"]
+	path = paint
+	url = https://github.com/anderslatif/paint
