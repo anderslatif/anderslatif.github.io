@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="p5.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: 'Courier';
+            color: #FFF;
+            font-size: 12pt;
+            line-height: 10pt;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ascii { 
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+    <meta charset="UTF-8">
+    <title>Webcam to ASCII</title>
+</head>
+<body>
+    <div id="ascii"></div>
+    
+    <script src="sketch.js"></script>
+
+    <label for="red">Red</label>
+    <input type="range" min="0" max="40" value="10" id="red">
+    <label for="green">Green</label>
+    <input type="range" min="0" max="40" value="10" id="green">
+    <label for="blue">Blue</label>
+    <input type="range" min="0" max="40" value="10" id="blue">
+</body>
+</html>
