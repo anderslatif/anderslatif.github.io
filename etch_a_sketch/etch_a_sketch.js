@@ -69,7 +69,7 @@ export default class EtchASketch {
 
     _setupMobileShakeDetection() {
       let lastX = 0, lastY = 0, lastZ = 0;
-      const threshold = 15; // Adjust sensitivity for shake detection
+      const threshold = 7;
   
       window.addEventListener('devicemotion', (event) => {
           const acceleration = event.accelerationIncludingGravity;
