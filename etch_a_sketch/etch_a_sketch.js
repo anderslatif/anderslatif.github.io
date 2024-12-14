@@ -44,7 +44,6 @@ export default class EtchASketch {
     build() {
       this.view.build()
       this._setupGamepad();
-      this._setupMobileShakeDetection();
 
       const sensitivityInput = document.getElementById('sensitivity');
       sensitivityInput.addEventListener('input', (event) => {
@@ -64,30 +63,6 @@ export default class EtchASketch {
         }
 
         this.SENSITIVITY = parseFloat(event.target.value);
-      });
-    }
-
-    _setupMobileShakeDetection() {
-      let lastX = 0, lastY = 0, lastZ = 0;
-      const threshold = 7;
-  
-      window.addEventListener('devicemotion', (event) => {
-          const acceleration = event.accelerationIncludingGravity;
-          if (!acceleration) return;
-  
-          const { x, y, z } = acceleration;
-  
-          const deltaX = Math.abs(x - lastX);
-          const deltaY = Math.abs(y - lastY);
-          const deltaZ = Math.abs(z - lastZ);
-  
-          if (deltaX + deltaY + deltaZ > threshold) {
-              this.shake();
-          }
-  
-          lastX = x;
-          lastY = y;
-          lastZ = z;
       });
     }
   
