@@ -62,28 +62,5 @@
         import EtchASketch from './etch_a_sketch.js';
         new EtchASketch().build();
     </script>
-    <!-- <script>
-    const updateGamepad = () => {
-        const gamepads = navigator.getGamepads();
-        if (gamepads[0]) {
-            const gamepad = gamepads[0];
-            const leftStickX = gamepad.axes[0];
-            const leftStickY = gamepad.axes[1];
-            const rightStickX = gamepad.axes[2];
-            const rightStickY = gamepad.axes[3];
-            console.log(`Left Stick: (${leftStickX}, ${leftStickY}), Right Stick: (${rightStickX}, ${rightStickY})`);
-        }
-        requestAnimationFrame(updateGamepad);
-    };
-
-    window.addEventListener("gamepadconnected", () => {
-        console.log("Gamepad connected");
-        requestAnimationFrame(updateGamepad);
-    });
-
-    window.addEventListener("gamepaddisconnected", () => {
-        console.log("Gamepad disconnected");
-    });
-    </script> -->
 </body>
 </html>

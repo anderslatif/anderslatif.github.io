@@ -1,3 +1,5 @@
+import howler from 'https://cdn.jsdelivr.net/npm/howler@2.2.4/+esm'
+
 export default class EtchASketch {
     STEP_SIZE_DEFAULT = 10
     CHANGE_IN_OPACITY_DEFAULT = 20
@@ -7,6 +9,8 @@ export default class EtchASketch {
     WIDTH_DEFAULT = 800
 
     SENSITIVITY = 0.2
+
+    SOUND_IS_PLAYING = false
   
     constructor({ x, y, stepSize, changeInOpacity, batchTime, width, height, action, actionId } = {}) {
       this.lines = []
@@ -43,11 +47,41 @@ export default class EtchASketch {
 
       const sensitivityInput = document.getElementById('sensitivity');
       sensitivityInput.addEventListener('input', (event) => {
+        if (!this.SOUND_IS_PLAYING) {
+          const sound = new Howl({
+            src: ['./assets/robot-knob.mp3'],
+            sprite: {
+              turnKnob: [0, 700]
+            },
+            onend: () => {
+              sound.unload();
+              this.SOUND_IS_PLAYING = false;
+            }
+          });
+          this.SOUND_IS_PLAYING = true;
+          sound.play('turnKnob');
+        }
+
         this.SENSITIVITY = parseFloat(event.target.value);
       });
     }
   
     shake() {
+      if (!this.SOUND_IS_PLAYING) {
+        const sound = new Howl({
+          src: ['./assets/shake-popcorn-bag.mp3'],
+          sprite: {
+            shake: [0, 1100]
+          },
+          onend: () => {
+            sound.unload();
+            this.SOUND_IS_PLAYING = false;
+          }
+        });
+        this.SOUND_IS_PLAYING = true;
+        sound.play('shake');
+      }
+
       const newLines = this.lines.map(line => {
         line.opacity -= this.changeInOpacity
         return line
@@ -141,12 +175,7 @@ export default class EtchASketch {
       };
 
       window.addEventListener("gamepadconnected", () => {
-          console.log("Gamepad connected");
           requestAnimationFrame(updateGamepad);
-      });
-
-      window.addEventListener("gamepaddisconnected", () => {
-          console.log("Gamepad disconnected");
       });
     }
   }
