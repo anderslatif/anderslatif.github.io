@@ -2,7 +2,7 @@ import howler from 'https://cdn.jsdelivr.net/npm/howler@2.2.4/+esm'
 
 export default class EtchASketch {
     STEP_SIZE_DEFAULT = 10
-    CHANGE_IN_OPACITY_DEFAULT = 20
+    CHANGE_IN_OPACITY = 10
     BATCH_TIME_DEFAULT = 5
   
     HEIGHT_DEFAULT = 500
@@ -12,7 +12,7 @@ export default class EtchASketch {
 
     SOUND_IS_PLAYING = false
   
-    constructor({ x, y, stepSize, changeInOpacity, batchTime, width, height, action, actionId } = {}) {
+    constructor({ x, y, stepSize, batchTime, width, height, action, actionId } = {}) {
       this.lines = []
       this.moves = []
       this.canvas = new Canvas()
@@ -44,6 +44,7 @@ export default class EtchASketch {
     build() {
       this.view.build()
       this._setupGamepad();
+      this._setupMobileShakeDetection();
 
       const sensitivityInput = document.getElementById('sensitivity');
       sensitivityInput.addEventListener('input', (event) => {
@@ -65,6 +66,30 @@ export default class EtchASketch {
         this.SENSITIVITY = parseFloat(event.target.value);
       });
     }
+
+    _setupMobileShakeDetection() {
+      let lastX = 0, lastY = 0, lastZ = 0;
+      const threshold = 15; // Adjust sensitivity for shake detection
+  
+      window.addEventListener('devicemotion', (event) => {
+          const acceleration = event.accelerationIncludingGravity;
+          if (!acceleration) return;
+  
+          const { x, y, z } = acceleration;
+  
+          const deltaX = Math.abs(x - lastX);
+          const deltaY = Math.abs(y - lastY);
+          const deltaZ = Math.abs(z - lastZ);
+  
+          if (deltaX + deltaY + deltaZ > threshold) {
+              this.shake();
+          }
+  
+          lastX = x;
+          lastY = y;
+          lastZ = z;
+      });
+    }
   
     shake() {
       if (!this.SOUND_IS_PLAYING) {
@@ -83,7 +108,7 @@ export default class EtchASketch {
       }
 
       const newLines = this.lines.map(line => {
-        line.opacity -= this.changeInOpacity
+        line.opacity -= this.CHANGE_IN_OPACITY
         return line
       })
   
