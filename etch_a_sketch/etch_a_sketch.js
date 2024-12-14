@@ -5,6 +5,8 @@ export default class EtchASketch {
   
     HEIGHT_DEFAULT = 500
     WIDTH_DEFAULT = 800
+
+    SENSITIVITY = 0.2
   
     constructor({ x, y, stepSize, changeInOpacity, batchTime, width, height, action, actionId } = {}) {
       this.lines = []
@@ -27,9 +29,6 @@ export default class EtchASketch {
   
       this.stepSize = stepSize || this.STEP_SIZE_DEFAULT
       this.batchTime = batchTime || this.BATCH_TIME_DEFAULT
-      this.changeInOpacity = changeInOpacity || this.CHANGE_IN_OPACITY_DEFAULT
-      this.action = action
-      this.actionId = actionId || 'export'
       this.lastRunTime = null
     }
   
@@ -42,16 +41,10 @@ export default class EtchASketch {
       this.view.build()
       this._setupGamepad();
 
-      if (this.action) {
-        const onAction = () => {
-          this.lineWidth = 5
-          this.action()
-        }
-  
-        const exportButton = document.getElementById(this.actionId)
-        exportButton.addEventListener('touchstart', onAction)
-        exportButton.addEventListener('click', onAction)
-      }
+      const sensitivityInput = document.getElementById('sensitivity');
+      sensitivityInput.addEventListener('input', (event) => {
+        this.SENSITIVITY = parseFloat(event.target.value);
+      });
     }
   
     shake() {
@@ -90,7 +83,7 @@ export default class EtchASketch {
     }
   
     _processInput(x, y) {
-      this.moves.push([x, y])
+      this.moves.push([x * this.SENSITIVITY * 2, y * this.SENSITIVITY * 2])
   
       if(this.lastRunTime === null || Date.now() - this.lastRunTime > this.batchTime) {
         this._handleMoves()
@@ -125,8 +118,6 @@ export default class EtchASketch {
     }
 
     _setupGamepad() {
-      const sensitivity = 0.2;
-
       const updateGamepad = () => {
           const gamepads = navigator.getGamepads();
           if (gamepads[0]) {
@@ -135,14 +126,14 @@ export default class EtchASketch {
               // Left stick for horizontal movement
               const leftStickX = gamepad.axes[0];
               if (Math.abs(leftStickX) > 0.2) {
-                  const xStep = this.stepSize * leftStickX * sensitivity;
+                  const xStep = this.stepSize * leftStickX * this.SENSITIVITY;
                   this._processInput(xStep, 0); // Move horizontally
               }
 
               // Right stick for vertical movement
               const rightStickY = gamepad.axes[3];
               if (Math.abs(rightStickY) > 0.2) {
-                  const yStep = this.stepSize * rightStickY * sensitivity;
+                  const yStep = this.stepSize * rightStickY * this.SENSITIVITY;
                   this._processInput(0, yStep); // Move vertically
               }
           }
@@ -247,11 +238,19 @@ export default class EtchASketch {
       let start = null
       let shakePosition = null
       let shakeAngle = null
+
+      const sensitiveElements = ['sensitivity']; // IDs to ignore dragging
   
       const down = (event) => {
         if(!this.moveControls.canShake()) return
         if(isEventInElement(event, leftControl) || isEventInElement(event, rightControl)) return
   
+        // Prevent dragging for sensitive elements
+        if (sensitiveElements.some(id => event.target.id === id)) {
+          event.stopPropagation();
+          return;
+      }
+
         event.preventDefault()
         document.addEventListener('mousemove', move)
         document.addEventListener('mouseup', up)
@@ -447,7 +446,7 @@ export default class EtchASketch {
       return element
     }
   
-    static createView({ canvasHeight, canvasWidth, id = 'container', buttonText = 'nothing nappens'} = {}) {
+    static createView({ canvasHeight, canvasWidth, id = 'container' } = {}) {
       const container = document.getElementById(id)
       container.style.borderStyle = 'outset'
       container.style.borderColor ='#c81b13'
@@ -459,6 +458,16 @@ export default class EtchASketch {
       container.style.boxShadow = '2px 2px 6px 0px rgba(0, 0, 0, 0.5)'
       container.style.top = '0'
       container.style.left = '0'
+
+      const messageDiv = document.createElement('div');
+      messageDiv.innerText = 'Shake to clear';
+      messageDiv.style.textAlign = 'center';
+      messageDiv.style.fontFamily = 'Arial, Helvetica, sans-serif';
+      messageDiv.style.fontSize = '22px';
+      messageDiv.style.fontWeight = 'bold';
+      messageDiv.style.marginBottom = '10px';
+
+    container.appendChild(messageDiv);
   
       const canvas = document.createElement('canvas')
       canvas.id = 'canvas'
@@ -481,11 +490,6 @@ export default class EtchASketch {
       controls.style.display = 'flex'
       controls.style.justifyContent = 'space-between'
       controls.style.alignItems = 'center'
-  
-      const actionButton = document.createElement('button')
-      actionButton.id = 'export'
-      actionButton.style.width = '20%'
-      actionButton.innerText = buttonText
 
       const sensitivityContainer = document.createElement('div');
       sensitivityContainer.style.display = 'flex';
@@ -500,15 +504,14 @@ export default class EtchASketch {
       const sensitivityInput = document.createElement('input')
       sensitivityInput.id = 'sensitivity'
       sensitivityInput.type = 'range'
-      sensitivityInput.min = '0.001'
-      sensitivityInput.max = '1'
+      sensitivityInput.min = '0.008'
+      sensitivityInput.max = '0.5'
       sensitivityInput.step = '0.001'
-      sensitivityInput.value = '0.2'
+      sensitivityInput.value = '0.1'
+      sensitivityInput.classList.add('toy-slider');
 
       sensitivityContainer.appendChild(sensitivityLabel);
       sensitivityContainer.appendChild(sensitivityInput);
-
-
   
       controls.appendChild(SketchView.createPicker('l_picker'))
       controls.appendChild(sensitivityContainer)
