@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="https://upload.wikimedia.org/wikipedia/commons/e/e5/Taj_Mahal_drawing_on_an_Etch-A-Sketch.jpg" />
+    <title>Etch A sketch</title>
+</head>
+<body>
+    
+    <div id="container"></div>
+    <script type="module">
+        import EtchASketch from './etch_a_sketch.js';
+        new EtchASketch().build();
+    </script>
+    <!-- <script>
+    const updateGamepad = () => {
+        const gamepads = navigator.getGamepads();
+        if (gamepads[0]) {
+            const gamepad = gamepads[0];
+            const leftStickX = gamepad.axes[0];
+            const leftStickY = gamepad.axes[1];
+            const rightStickX = gamepad.axes[2];
+            const rightStickY = gamepad.axes[3];
+            console.log(`Left Stick: (${leftStickX}, ${leftStickY}), Right Stick: (${rightStickX}, ${rightStickY})`);
+        }
+        requestAnimationFrame(updateGamepad);
+    };
+
+    window.addEventListener("gamepadconnected", () => {
+        console.log("Gamepad connected");
+        requestAnimationFrame(updateGamepad);
+    });
+
+    window.addEventListener("gamepaddisconnected", () => {
+        console.log("Gamepad disconnected");
+    });
+    </script> -->
+</body>
+</html>
