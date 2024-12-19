@@ -1,4 +1,4 @@
-import howler from 'https://cdn.jsdelivr.net/npm/howler@2.2.4/+esm'
+import 'https://cdn.jsdelivr.net/npm/howler@2.2.4/+esm'
 
 export default class EtchASketch {
     STEP_SIZE_DEFAULT = 10
@@ -175,7 +175,7 @@ export default class EtchASketch {
       };
 
       window.addEventListener("gamepadconnected", () => {
-          requestAnimationFrame(updateGamepad);
+		requestAnimationFrame(updateGamepad);
       });
     }
   }
