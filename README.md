@@ -1,5 +1,7 @@
 # anderslatif.github.io
 
+[Frontpage](https://anderslatif.github.io/)
+
 [Link my paint page](https://anderslatif.github.io/paint)
 
 ### Personal note
