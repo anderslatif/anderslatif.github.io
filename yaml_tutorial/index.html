@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="static/favicon.ico">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/material.min.css">
+    <title>Interactive YAML Tutorial</title>
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-card">
+            <h1>Interactive YAML Tutorial</h1>
+            <p>Learn the very basics of YAML through hands-on exercises.</p>
+            <div class="yaml-primer">
+                <h3>YAML Syntax Basics</h3>
+                <div class="primer-grid">
+                    <div class="primer-item">
+                        <strong>Key-Value Pairs:</strong>
+                        <code>key: value</code>
+                    </div>
+                    <div class="primer-item">
+                        <strong>Nested Objects:</strong>
+                        <code>parent:<br>&nbsp;&nbsp;child: value</code>
+                    </div>
+                    <div class="primer-item">
+                        <strong>Lists:</strong>
+                        <code>items:<br>- item1<br>- item2</code>
+                    </div>
+                    <div class="primer-item">
+                        <strong>Numbers:</strong>
+                        <code>age: 25<br>price: 19.99</code>
+                    </div>
+                    <div class="primer-item">
+                        <strong>Booleans:</strong>
+                        <code>active: true<br>disabled: false</code>
+                    </div>
+                    <div class="primer-item">
+                        <strong>Multiline Strings:</strong>
+                        <code>description: |<br>&nbsp;&nbsp;This is a<br>&nbsp;&nbsp;multiline string</code>
+                    </div>
+                    <div class="primer-item">
+                        <strong>Environment Variables:</strong>
+                        <code>database_url: ${DB_URL}<br>api_key: ${API_KEY}</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="exercises-container">
+            <!-- Exercises will be dynamically added here -->
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/yaml/yaml.min.js"></script>
+    <script src="./components/tutorial-card.js"></script>
+    <script src="./js/validation.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+</html>

@@ -175,7 +175,7 @@ export default class EtchASketch {
       };
 
       window.addEventListener("gamepadconnected", () => {
-		requestAnimationFrame(updateGamepad);
+		    requestAnimationFrame(updateGamepad);
       });
     }
   }
