@@ -84,9 +84,11 @@ class YamlValidator {
                             hints.push(`Missing key: "${key}"`);
                         } else if (typeof userParsed[key] !== typeof value) {
                             hints.push(`Key "${key}" should be ${typeof value}, but got ${typeof userParsed[key]}`);
-                        } else if (userParsed[key] !== value) {
+                        } else if (!this.deepEqual(userParsed[key], value)) {
                             if (typeof value === 'string') {
                                 hints.push(`Key "${key}" should be "${value}", but got "${userParsed[key]}"`);
+                            } else if (typeof value === 'object' && value !== null) {
+                                hints.push(`Key "${key}" structure doesn't match expected format`);
                             } else {
                                 hints.push(`Key "${key}" has incorrect value`);
                             }
