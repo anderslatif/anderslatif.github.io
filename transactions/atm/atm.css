@@ -1,0 +1,101 @@
+body {
+    user-select: none;
+}
+
+.centered {
+    text-align: center;
+}
+
+.operations {
+    display: flex;
+    gap: 20px;
+}
+
+.operations > div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.operations > div > div {
+    display: flex;
+    gap: 10px;
+}
+
+.transactions {
+    display: flex;
+    gap: 20px;
+}
+
+.transaction-column {
+    flex: 1;
+}
+
+.atm-column {
+    flex: 2;
+    position: relative;
+    align-self: flex-start;
+}
+
+.atm-column img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.balance-overlay {
+    position: absolute;
+    top: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 3.3em;
+    font-weight: bold;
+    color: green;
+    text-shadow: 2px 2px 2px lightgreen;
+}
+
+#achievements {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 30px 40px 40px 40px;
+    background: linear-gradient(to bottom, #4A2A0F 0%, #6B3410 15%, #8B4513 40%, #A0522D 100%);
+    width: 100%;
+    box-sizing: border-box;
+    clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+}
+
+.achievement {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: 14px;
+    width: 80px;
+}
+
+.achievement-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: 14px;
+    width: 80px;
+    filter: grayscale(100%);
+    opacity: 0.3;
+    cursor: help;
+}
+
+.achievement-slot.unlocked {
+    filter: grayscale(0%);
+    opacity: 1;
+}
+
+.achievement, .achievement-slot {
+    font-size: 48px;
+}
