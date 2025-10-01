@@ -41,8 +41,7 @@ readBalanceBtn.addEventListener('click', readBalance);
 updateBalanceBtn.addEventListener('click', updateBalance);
 
 // Rules link
-document.getElementById('rules-link').addEventListener('click', (e) => {
-    e.preventDefault();
+document.getElementById('rules-link').addEventListener('click', () => {
     showRules();
 });
 
@@ -58,6 +57,15 @@ function showRules() {
     setTimeout(() => {
         new SnackBar({
             message: '🎮 Rules: Read the balance, perform Bob/Bank operations, then update.',
+            timeout: false,
+            position: 'tc',
+            status: 'warning'
+        });
+    }, 500);
+
+    setTimeout(() => {
+        new SnackBar({
+            message: 'Rrefresh the page to reset the bank balance to 1000 DKK. You wont lose your achievements.',
             timeout: false,
             position: 'tc',
             status: 'warning'
@@ -162,7 +170,7 @@ function withdraw() {
 function deposit() {
     if (isRecording) currentRecording.push('deposit');
     pendingBalance += 100;
-    addBobOperation(`Deposit DKK 100 (Balance now: DKK ${pendingBalance})`);
+    addBobOperation(`Deposit 100 DKK (Balance now: ${pendingBalance} DKK)`);
     updateButtonStates();
 }
 
@@ -199,18 +207,18 @@ function checkAchievements(oldBalance) {
         unlockAchievement('By the Book', 'byTheBook', wasNew);
     }
 
-    // Double Dip (multiple withdrawals)
-    if (operationCount >= 2 && bobOperations.filter(op => op.includes('Withdraw')).length >= 2) {
-        const wasNew = !achievements.doubleDip;
-        if (!achievements.doubleDip) {
-            achievements.doubleDip = true;
-            exploitsThisSession.add('doubleDip');
-            unlockedAchievements.push('doubleDip');
+    // Triple Dip (three withdrawals)
+    if (operationCount >= 3 && bobOperations.filter(op => op.includes('Withdraw')).length >= 3) {
+        const wasNew = !achievements.tripleDip;
+        if (!achievements.tripleDip) {
+            achievements.tripleDip = true;
+            exploitsThisSession.add('tripleDip');
+            unlockedAchievements.push('tripleDip');
         }
-        unlockAchievement('Double Dip', 'doubleDip', wasNew);
+        unlockAchievement('Triple Dip', 'tripleDip', wasNew);
     }
 
-    // Money Printer (gained more than expected through multiple deposits)
+    // Money Printer (lost more than expected through multiple deposits)
     const depositCount = bobOperations.filter(op => op.includes('Deposit')).length;
     if (depositCount >= 2 && balanceChange > 100) {
         const wasNew = !achievements.moneyPrinter;
@@ -227,7 +235,7 @@ function checkAchievements(oldBalance) {
         const wasNew = !achievements.bobTheRobber;
         if (!achievements.bobTheRobber) {
             achievements.bobTheRobber = true;
-            exploitsThisSession.add('robber');
+            exploitsThisSession.add('bobTheRobber');
             unlockedAchievements.push('bobTheRobber');
         }
         unlockAchievement('Bob the Robber', 'bobTheRobber', wasNew);
@@ -268,7 +276,7 @@ function loadAchievements() {
     return {
         firstSteps: false,
         byTheBook: false,
-        doubleDip: false,
+        tripleDip: false,
         moneyPrinter: false,
         bobTheRobber: false,
         fatBanker: false,
@@ -357,28 +365,28 @@ function displayAchievements() {
     const achievementNames = {
         firstSteps: 'First Steps',
         byTheBook: 'By the Book',
-        doubleDip: 'Double Dip',
-        moneyPrinter: 'Money Printer',
         bobTheRobber: 'Bob the Robber',
+        tripleDip: 'Triple Dip',
         raceConditionMaster: 'Race Condition Master',
+        moneyPrinter: 'Money Printer',
         fatBanker: 'Fat Banker',
     };
 
     const achievementDescriptions = {
         firstSteps: 'Complete your first transaction',
         byTheBook: 'Complete a single legitimate operation',
-        doubleDip: 'Withdraw multiple times in one transaction',
-        moneyPrinter: 'Gain more money than you should have',
+        tripleDip: 'Withdraw three times in one transaction',
+        moneyPrinter: 'Lose more money than you should have',
         bobTheRobber: 'Create a negative balance or overdraft',
-        raceConditionMaster: 'Perform 3+ operations in a single transaction',   
+        raceConditionMaster: 'Perform 3+ operations in a single transaction',
         fatBanker: 'Accumulate 1500 DKK or more'
     };
 
     const achievementCategories = {
         firstSteps: 'Innocent',
         byTheBook: 'Innocent',
-        doubleDip: 'Hacker',
-        moneyPrinter: 'Hacker',
+        tripleDip: 'Hacker',
+        moneyPrinter: 'Financier',
         bobTheRobber: 'Hacker',
         fatBanker: 'Financier',
         raceConditionMaster: 'Hacker'
@@ -390,10 +398,10 @@ function displayAchievements() {
         div.className = unlocked ? 'achievement-slot unlocked' : 'achievement-slot';
         div.title = achievementDescriptions[key];
         div.dataset.achievementKey = key;
-        const nameDisplay = unlocked ? `<div style="font-size: 11px; margin-top: 5px; white-space: nowrap;">${name}</div>` : '';
+        const nameDisplay = unlocked ? `<div class="achievement-name">${name}</div>` : '';
         const category = achievementCategories[key];
-        const categoryColor = category === 'Innocent' ? '#2196F3' : (category === 'Hacker' ? '#f44336' : '#FFC107');
-        const categoryDisplay = `<div style="font-size: 8px; margin-top: 3px; color: ${categoryColor}; font-weight: bold;">${category}</div>`;
+        const categoryClass = category === 'Innocent' ? 'category-innocent' : (category === 'Hacker' ? 'category-hacker' : 'category-financier');
+        const categoryDisplay = `<div class="achievement-category ${categoryClass}">${category}</div>`;
         div.innerHTML = `🏆${nameDisplay}${categoryDisplay}`;
 
         // Add swipe-to-delete functionality
@@ -456,14 +464,15 @@ function addSwipeToDelete(element, achievementKey) {
 function unlockAchievement(name, id, isNewlyUnlocked) {
 
     // Determine achievement type and color
-    const hackerAchievements = ['doubleDip', 'moneyPrinter', 'bobTheRobber', 'raceConditionMaster'];
-    const bankAchievements = ['fatBanker'];
+    const hackerAchievements = ['tripleDip', 'bobTheRobber', 'raceConditionMaster'];
+    const bankAchievements = ['moneyPrinter', 'fatBanker'];
+    const innocentAchievements = ['firstSteps', 'byTheBook'];
 
     const message = isNewlyUnlocked ? `🏆 Achievement Unlocked: ${name}` : `🏆 ${name}`;
 
     new SnackBar({
         message: message,
-        status: hackerAchievements.includes(id) ? 'danger' : (bankAchievements.includes(id) ? 'warning' : 'success')
+        status: hackerAchievements.includes(id) ? 'danger' : (bankAchievements.includes(id) ? 'warning' : (innocentAchievements.includes(id) ? 'info' : 'success'))
     });
 
     if (isNewlyUnlocked) {
