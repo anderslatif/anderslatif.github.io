@@ -1,5 +1,6 @@
 body {
     user-select: none;
+    padding-bottom: 200px;
 }
 
 .centered {
@@ -30,6 +31,30 @@ body {
 
 .transaction-column {
     flex: 1;
+}
+
+.operation-item {
+    background-color: #57527a;
+    border-left: 4px solid #2196F3;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+.operation-spacer {
+    padding: 0;
+    margin: 5px 0;
+    visibility: hidden;
+    box-sizing: border-box;
+}
+
+#bob-operations .operation-item {
+    border-left-color: #FF9800;
+}
+
+#bank-operations .operation-item {
+    border-left-color: #4CAF50;
 }
 
 .atm-column {
@@ -94,6 +119,7 @@ body {
 .achievement-slot.unlocked {
     filter: grayscale(0%);
     opacity: 1;
+    cursor: pointer;
 }
 
 .achievement, .achievement-slot {

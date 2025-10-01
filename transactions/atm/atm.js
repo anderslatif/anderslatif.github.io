@@ -7,8 +7,11 @@ let bankOperations = [];
 
 
 let achievements = loadAchievements();
+let achievementReplays = loadReplays();
 
 let exploitsThisSession = new Set();
+let isRecording = false;
+let currentRecording = [];
 
 
 // DOM elements
@@ -26,11 +29,68 @@ updateDisplay();
 updateButtonStates();
 displayAchievements();
 
+// Start recording if there are still achievements to unlock
+if (Object.values(achievements).some(val => !val)) {
+    startRecording();
+}
+
 // Event listeners
 withdrawBtn.addEventListener('click', withdraw);
 depositBtn.addEventListener('click', deposit);
 readBalanceBtn.addEventListener('click', readBalance);
 updateBalanceBtn.addEventListener('click', updateBalance);
+
+// Rules link
+document.getElementById('rules-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    showRules();
+});
+
+function showRules() {
+    // First toast - Welcome
+    new SnackBar({
+        message: '👋 Welcome! Your goal is to exploit the ATM system and unlock all achievements.',
+        timeout: false,
+        position: 'tc',
+        status: 'info'
+    });
+
+    setTimeout(() => {
+        new SnackBar({
+            message: '🎮 Rules: Read the balance, perform Bob/Bank operations, then update.',
+            timeout: false,
+            position: 'tc',
+            status: 'warning'
+        });
+    }, 500);
+
+    setTimeout(() => {
+        new SnackBar({
+            message: '🏆 Trophy Tip #1: Hover with your cursor over a trophy to see its details.',
+            timeout: false,
+            position: 'tc',
+            status: 'success'
+        });
+    }, 3000);
+
+    setTimeout(() => {
+        new SnackBar({
+            message: '🏆 Trophy Tip #2: Click and swipe a trophy off the table to reset it and try again.',
+            timeout: false,
+            position: 'tc',
+            status: 'success'
+        });
+    }, 3000);
+
+    setTimeout(() => {
+        new SnackBar({
+            message: '🏆 Trophy Tip #3: Double-click a trophy to replay the transaction that unlocked it.',
+            timeout: false,
+            position: 'tc',
+            status: 'success'
+        });
+    }, 3000);
+}
 
 function updateDisplay() {
     balanceDisplay.textContent = displayedBalance;
@@ -45,43 +105,73 @@ function updateButtonStates() {
 
 function addBobOperation(text) {
     bobOperations.push(text);
+
     const p = document.createElement('p');
     p.textContent = text;
+    p.className = 'operation-item';
     bobOpsDiv.appendChild(p);
+
+    // Add matching spacer to Bank side
+    const spacer = document.createElement('p');
+    spacer.className = 'operation-spacer';
+    spacer.innerHTML = '&nbsp;';
+    bankOpsDiv.appendChild(spacer);
+
+    // After render, match the heights
+    requestAnimationFrame(() => {
+        spacer.style.height = p.offsetHeight + 'px';
+    });
 }
 
 function addBankOperation(text) {
     bankOperations.push(text);
+
     const p = document.createElement('p');
     p.textContent = text;
+    p.className = 'operation-item';
     bankOpsDiv.appendChild(p);
+
+    // Add matching spacer to Bob side
+    const spacer = document.createElement('p');
+    spacer.className = 'operation-spacer';
+    spacer.innerHTML = '&nbsp;';
+    bobOpsDiv.appendChild(spacer);
+
+    // After render, match the heights
+    requestAnimationFrame(() => {
+        spacer.style.height = p.offsetHeight + 'px';
+    });
 }
 
 function readBalance() {
+    if (isRecording) currentRecording.push('readBalance');
     pendingBalance = actualBalance;
     displayedBalance = actualBalance;
-    addBankOperation(`Read balance: DKK ${actualBalance}`);
+    addBankOperation(`Read balance: ${actualBalance} DKK`);
     updateDisplay();
     updateButtonStates();
 }
 
 function withdraw() {
+    if (isRecording) currentRecording.push('withdraw');
     pendingBalance -= 100;
-    addBobOperation(`Withdraw DKK 100 (Balance now: DKK ${pendingBalance})`);
+    addBobOperation(`Withdraw 100 DKK (Balance now: ${pendingBalance} DKK)`);
     updateButtonStates();
 }
 
 function deposit() {
+    if (isRecording) currentRecording.push('deposit');
     pendingBalance += 100;
     addBobOperation(`Deposit DKK 100 (Balance now: DKK ${pendingBalance})`);
     updateButtonStates();
 }
 
 function updateBalance() {
+    if (isRecording) currentRecording.push('updateBalance');
     const oldBalance = actualBalance;
     actualBalance = pendingBalance;
-    addBankOperation(`Update balance: DKK ${oldBalance} → DKK ${actualBalance}`);
-    
+    addBankOperation(`Update balance: ${oldBalance} DKK → ${actualBalance} DKK`);
+
     checkAchievements(oldBalance);
     resetTransaction();
 }
@@ -89,11 +179,14 @@ function updateBalance() {
 function checkAchievements(oldBalance) {
     const operationCount = bobOperations.length;
     const balanceChange = actualBalance - oldBalance;
-    
+
+    let unlockedAchievements = [];
+
     // First Steps
     if (!achievements.firstSteps) {
         achievements.firstSteps = true;
         unlockAchievement('First Steps', 'firstSteps', true);
+        unlockedAchievements.push('firstSteps');
     }
 
     // By the Book (single operation with correct result)
@@ -101,6 +194,7 @@ function checkAchievements(oldBalance) {
         const wasNew = !achievements.byTheBook;
         if (!achievements.byTheBook) {
             achievements.byTheBook = true;
+            unlockedAchievements.push('byTheBook');
         }
         unlockAchievement('By the Book', 'byTheBook', wasNew);
     }
@@ -111,6 +205,7 @@ function checkAchievements(oldBalance) {
         if (!achievements.doubleDip) {
             achievements.doubleDip = true;
             exploitsThisSession.add('doubleDip');
+            unlockedAchievements.push('doubleDip');
         }
         unlockAchievement('Double Dip', 'doubleDip', wasNew);
     }
@@ -122,6 +217,7 @@ function checkAchievements(oldBalance) {
         if (!achievements.moneyPrinter) {
             achievements.moneyPrinter = true;
             exploitsThisSession.add('moneyPrinter');
+            unlockedAchievements.push('moneyPrinter');
         }
         unlockAchievement('Money Printer', 'moneyPrinter', wasNew);
     }
@@ -132,6 +228,7 @@ function checkAchievements(oldBalance) {
         if (!achievements.bobTheRobber) {
             achievements.bobTheRobber = true;
             exploitsThisSession.add('robber');
+            unlockedAchievements.push('bobTheRobber');
         }
         unlockAchievement('Bob the Robber', 'bobTheRobber', wasNew);
     }
@@ -141,6 +238,7 @@ function checkAchievements(oldBalance) {
         const wasNew = !achievements.fatBanker;
         if (!achievements.fatBanker) {
             achievements.fatBanker = true;
+            unlockedAchievements.push('fatBanker');
         }
         unlockAchievement('Fat Banker', 'fatBanker', wasNew);
     }
@@ -151,8 +249,14 @@ function checkAchievements(oldBalance) {
         if (!achievements.raceConditionMaster) {
             achievements.raceConditionMaster = true;
             exploitsThisSession.add('raceCondition');
+            unlockedAchievements.push('raceConditionMaster');
         }
         unlockAchievement('Race Condition Master', 'raceConditionMaster', wasNew);
+    }
+
+    // Save recording for newly unlocked achievements
+    if (unlockedAchievements.length > 0) {
+        unlockedAchievements.forEach(key => stopRecording(key));
     }
 }
 
@@ -174,6 +278,78 @@ function loadAchievements() {
 
 function saveAchievements() {
     localStorage.setItem('achievements', JSON.stringify(achievements));
+}
+
+function loadReplays() {
+    const saved = localStorage.getItem('achievementReplays');
+    if (saved) {
+        return JSON.parse(saved);
+    }
+    return {};
+}
+
+function saveReplays() {
+    localStorage.setItem('achievementReplays', JSON.stringify(achievementReplays));
+}
+
+function startRecording() {
+    isRecording = true;
+    currentRecording = [];
+}
+
+function stopRecording(achievementKey) {
+    isRecording = false;
+    if (currentRecording.length > 0) {
+        achievementReplays[achievementKey] = [...currentRecording];
+        saveReplays();
+    }
+    currentRecording = [];
+}
+
+function replayAchievement(achievementKey) {
+    const replay = achievementReplays[achievementKey];
+    if (!replay || replay.length === 0) {
+        new SnackBar({
+            message: 'No replay available for this achievement',
+            status: 'warning'
+        });
+        return;
+    }
+
+    // Reset the transaction state
+    resetTransaction();
+
+    // Disable buttons during replay
+    const allButtons = [withdrawBtn, depositBtn, readBalanceBtn, updateBalanceBtn];
+    allButtons.forEach(btn => btn.disabled = true);
+
+    // Replay actions with delay
+    let index = 0;
+    const replayInterval = setInterval(() => {
+        if (index >= replay.length) {
+            clearInterval(replayInterval);
+            allButtons.forEach(btn => btn.disabled = false);
+            updateButtonStates();
+            return;
+        }
+
+        const action = replay[index];
+        switch(action) {
+            case 'readBalance':
+                readBalance();
+                break;
+            case 'withdraw':
+                withdraw();
+                break;
+            case 'deposit':
+                deposit();
+                break;
+            case 'updateBalance':
+                updateBalance();
+                break;
+        }
+        index++;
+    }, 500);
 }
 
 function displayAchievements() {
@@ -223,6 +399,12 @@ function displayAchievements() {
         // Add swipe-to-delete functionality
         if (unlocked) {
             addSwipeToDelete(div, key);
+
+            // Add double-click to replay
+            div.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                replayAchievement(key);
+            });
         }
 
         achievementsDiv.appendChild(div);
@@ -272,7 +454,6 @@ function addSwipeToDelete(element, achievementKey) {
 }
 
 function unlockAchievement(name, id, isNewlyUnlocked) {
-    console.log(`🏆 Achievement ${isNewlyUnlocked ? 'Unlocked' : 'Achieved'}: ${name}`);
 
     // Determine achievement type and color
     const hackerAchievements = ['doubleDip', 'moneyPrinter', 'bobTheRobber', 'raceConditionMaster'];
@@ -300,4 +481,9 @@ function resetTransaction() {
     bankOpsDiv.innerHTML = '';
     updateDisplay();
     updateButtonStates();
+
+    // Restart recording if there are still achievements to unlock
+    if (Object.values(achievements).some(val => !val)) {
+        startRecording();
+    }
 }
