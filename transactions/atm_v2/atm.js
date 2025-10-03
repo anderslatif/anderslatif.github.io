@@ -10,7 +10,7 @@ let bobOperations = [];
 let bankOperations = [];
 let bobOperationBalances = []; // Track expected balance after each Bob operation
 let awaitingGuess = false;
-let lastOperationType = null; // Track last operation: 'deposit' or 'withdraw'
+let firstOperationType = null; // Track first operation after read: 'deposit' or 'withdraw'
 
 
 let achievements = loadAchievements();
@@ -118,10 +118,10 @@ function updateButtonStates() {
     depositBtn.disabled = !hasRead || awaitingGuess;
     updateBalanceBtn.disabled = bobOperations.length === 0 && bankOperations.length === 0;
 
-    // Update button text based on last operation
-    if (lastOperationType === 'deposit') {
+    // Update button text based on first operation after read
+    if (firstOperationType === 'deposit') {
         updateBalanceBtn.textContent = 'Update +100 DKK';
-    } else if (lastOperationType === 'withdraw') {
+    } else if (firstOperationType === 'withdraw') {
         updateBalanceBtn.textContent = 'Update -100 DKK';
     } else {
         updateBalanceBtn.textContent = 'Update Balance';
@@ -175,6 +175,7 @@ function readBalance() {
     pendingBalance = actualBalance;
     lastReadBalance = actualBalance;
     operationsSinceLastRead = 0;
+    firstOperationType = null; // Reset on each read
 
     // Only set bobBalance if this is the first read (no operations yet)
     if (bobBalance === null) {
@@ -192,10 +193,10 @@ function withdraw() {
     if (isRecording) currentRecording.push('withdraw');
     bobBalance -= 100;
     operationsSinceLastRead++;
-    lastOperationType = 'withdraw';
 
-    // Legitimate balance: only apply first operation since last read
+    // Track first operation after read
     if (operationsSinceLastRead === 1) {
+        firstOperationType = 'withdraw';
         legitimateBalance = lastReadBalance - 100;
     }
 
@@ -217,10 +218,10 @@ function deposit() {
     if (isRecording) currentRecording.push('deposit');
     bobBalance += 100;
     operationsSinceLastRead++;
-    lastOperationType = 'deposit';
 
-    // Legitimate balance: only apply first operation since last read
+    // Track first operation after read
     if (operationsSinceLastRead === 1) {
+        firstOperationType = 'deposit';
         legitimateBalance = lastReadBalance + 100;
     }
 
@@ -253,7 +254,7 @@ function updateBalance() {
 function submitFinalBalance() {
     if (isRecording) currentRecording.push('updateBalance');
     const oldBalance = actualBalance;
-    actualBalance = bobBalance; // Bank updates to Bob's calculated balance
+    actualBalance = legitimateBalance; // Bank only applies first operation (Read-Modify-Write race condition)
     addBankOperation(`Update balance: ${oldBalance} DKK → ${actualBalance} DKK`);
 
     checkAchievements(oldBalance);
@@ -468,7 +469,7 @@ function displayAchievements() {
         firstSteps: 'Complete your first transaction',
         byTheBook: 'Complete a single legitimate operation',
         tripleDip: 'Withdraw three times in one transaction',
-        moneyPrinter: 'Lose more money than you should have',
+        moneyPrinter: 'Let the bank gain money',
         bobTheRobber: 'Create a negative overdraft',
         raceConditionMaster: 'Perform 3+ operations in a single transaction',
         fatBanker: 'Accumulate 1500 DKK or more'
@@ -698,7 +699,7 @@ function resetTransaction() {
     bankOperations = [];
     bobOperationBalances = [];
     awaitingGuess = false;
-    lastOperationType = null;
+    firstOperationType = null;
     bobOpsDiv.innerHTML = '';
     bankOpsDiv.innerHTML = '';
     updateDisplay();
