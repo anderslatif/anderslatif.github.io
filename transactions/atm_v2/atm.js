@@ -10,6 +10,7 @@ let bobOperations = [];
 let bankOperations = [];
 let bobOperationBalances = []; // Track expected balance after each Bob operation
 let awaitingGuess = false;
+let lastOperationType = null; // Track last operation: 'deposit' or 'withdraw'
 
 
 let achievements = loadAchievements();
@@ -116,6 +117,15 @@ function updateButtonStates() {
     withdrawBtn.disabled = !hasRead || awaitingGuess;
     depositBtn.disabled = !hasRead || awaitingGuess;
     updateBalanceBtn.disabled = bobOperations.length === 0 && bankOperations.length === 0;
+
+    // Update button text based on last operation
+    if (lastOperationType === 'deposit') {
+        updateBalanceBtn.textContent = 'Update +100 DKK';
+    } else if (lastOperationType === 'withdraw') {
+        updateBalanceBtn.textContent = 'Update -100 DKK';
+    } else {
+        updateBalanceBtn.textContent = 'Update Balance';
+    }
 }
 
 function addBobOperation(text, expectedBalance) {
@@ -182,6 +192,7 @@ function withdraw() {
     if (isRecording) currentRecording.push('withdraw');
     bobBalance -= 100;
     operationsSinceLastRead++;
+    lastOperationType = 'withdraw';
 
     // Legitimate balance: only apply first operation since last read
     if (operationsSinceLastRead === 1) {
@@ -206,6 +217,7 @@ function deposit() {
     if (isRecording) currentRecording.push('deposit');
     bobBalance += 100;
     operationsSinceLastRead++;
+    lastOperationType = 'deposit';
 
     // Legitimate balance: only apply first operation since last read
     if (operationsSinceLastRead === 1) {
@@ -686,6 +698,7 @@ function resetTransaction() {
     bankOperations = [];
     bobOperationBalances = [];
     awaitingGuess = false;
+    lastOperationType = null;
     bobOpsDiv.innerHTML = '';
     bankOpsDiv.innerHTML = '';
     updateDisplay();
