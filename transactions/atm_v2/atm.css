@@ -14,6 +14,56 @@ body {
     text-decoration: underline;
 }
 
+.rules-section {
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #2d2d44;
+    border-radius: 8px;
+    border: 2px solid #4CAF50;
+    max-width: 800px;
+    text-align: left;
+}
+
+.rules-section.hidden {
+    display: none;
+}
+
+.rules-section h2 {
+    margin-top: 0;
+    color: #4CAF50;
+}
+
+.rules-section p {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+.currency {
+    font-weight: 600;
+    color: #d4af37;
+}
+
+.currency.positive {
+    color: #81c784;
+}
+
+.currency.negative {
+    color: #e57373;
+}
+
+.currency.profit {
+    color: #66bb6a;
+}
+
+.currency.loss {
+    color: #ef5350;
+}
+
+.highlight-number {
+    font-weight: 600;
+    color: #64b5f6;
+}
+
 .operations {
     display: flex;
     gap: 20px;
@@ -29,6 +79,41 @@ body {
 .operations > div > div {
     display: flex;
     gap: 10px;
+}
+
+.update-container {
+    display: flex;
+    gap: 5px;
+}
+
+.update-container select {
+    flex: 1;
+}
+
+.update-container button {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.finish-container {
+    text-align: center;
+    margin-top: 20px;
+}
+
+#finish-transaction {
+    width: 100%;
+    background-color: #4CAF50;
+    color: white;
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-5deg); }
+    75% { transform: rotate(5deg); }
+}
+
+.wiggle {
+    animation: wiggle 0.5s ease-in-out;
 }
 
 .transactions {
@@ -78,10 +163,10 @@ body {
 
 .balance-overlay {
     position: absolute;
-    top: 25%;
+    top: 23%;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 3.3em;
+    font-size: 3.2em;
     font-weight: bold;
     color: green;
     text-shadow: 2px 2px 2px lightgreen;

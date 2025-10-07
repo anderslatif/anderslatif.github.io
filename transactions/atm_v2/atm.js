@@ -5,12 +5,15 @@ let bobBalance = null; // Bob's view of the balance (separate from bank's actual
 let legitimateBalance = null; // What the balance should be if operations were applied correctly
 let lastReadBalance = null; // The balance from the most recent read
 let operationsSinceLastRead = 0; // Count operations since last read
+let transactionStartBalance = null; // Balance at the start of entire transaction
 
 let bobOperations = [];
 let bankOperations = [];
 let bobOperationBalances = []; // Track expected balance after each Bob operation
-let awaitingGuess = false;
-let firstOperationType = null; // Track first operation after read: 'deposit' or 'withdraw'
+let totalOperationsInTransaction = 0; // Count all operations across all updates
+let allBobOperations = []; // Track all Bob operations across entire transaction
+let pendingUpdates = []; // Track available updates to apply
+let appliedUpdateIndices = new Set(); // Track which bob operations have been used in updates
 
 
 let achievements = loadAchievements();
@@ -28,14 +31,25 @@ const withdrawBtn = document.getElementById('withdraw');
 const depositBtn = document.getElementById('deposit');
 const readBalanceBtn = document.getElementById('read-balance');
 const updateBalanceBtn = document.getElementById('update-balance');
+const updateDropdown = document.getElementById('update-dropdown');
+const finishTransactionBtn = document.getElementById('finish-transaction');
 const bobOpsDiv = document.getElementById('bob-operations');
 const bankOpsDiv = document.getElementById('bank-operations');
 const achievementsDiv = document.getElementById('achievements');
+const rulesSection = document.getElementById('rules-section');
 
 // Initialize
 updateDisplay();
 updateButtonStates();
 displayAchievements();
+
+// Check if rules should be shown (show if no achievements unlocked and no localStorage)
+const hasAchievements = localStorage.getItem('achievements');
+if (!hasAchievements) {
+    rulesSection.classList.remove('hidden');
+} else {
+    rulesSection.classList.add('hidden');
+}
 
 // Start recording if there are still achievements to unlock
 if (Object.values(achievements).some(val => !val)) {
@@ -43,69 +57,37 @@ if (Object.values(achievements).some(val => !val)) {
 }
 
 // Event listeners
-withdrawBtn.addEventListener('click', withdraw);
-depositBtn.addEventListener('click', deposit);
-readBalanceBtn.addEventListener('click', readBalance);
-updateBalanceBtn.addEventListener('click', updateBalance);
-
-// Rules link
-document.getElementById('rules-link').addEventListener('click', () => {
-    showRules();
+withdrawBtn.addEventListener('click', () => {
+    hideRulesOnFirstClick();
+    withdraw();
+});
+depositBtn.addEventListener('click', () => {
+    hideRulesOnFirstClick();
+    deposit();
+});
+readBalanceBtn.addEventListener('click', () => {
+    hideRulesOnFirstClick();
+    readBalance();
+});
+updateBalanceBtn.addEventListener('click', () => {
+    hideRulesOnFirstClick();
+    applySelectedUpdate();
+});
+updateDropdown.addEventListener('change', updateButtonText);
+finishTransactionBtn.addEventListener('click', () => {
+    hideRulesOnFirstClick();
+    finishTransaction();
 });
 
-function showRules() {
-    // First toast - Welcome
-    new SnackBar({
-        message: '👋 Welcome! Your goal is to exploit the ATM system and unlock all achievements.',
-        timeout: false,
-        position: 'tc',
-        status: 'info'
-    });
+// Rules link - toggle visibility
+document.getElementById('rules-link').addEventListener('click', () => {
+    rulesSection.classList.toggle('hidden');
+});
 
-    setTimeout(() => {
-        new SnackBar({
-            message: '🎮 Rules: Read the balance, perform Bob/Bank operations, then update.',
-            timeout: false,
-            position: 'tc',
-            status: 'warning'
-        });
-    }, 500);
-
-    setTimeout(() => {
-        new SnackBar({
-            message: 'Refresh the page to reset the bank balance to 1000 DKK. You won\'t lose your achievements.',
-            timeout: false,
-            position: 'tc',
-            status: 'warning'
-        });
-    }, 500);
-
-    setTimeout(() => {
-        new SnackBar({
-            message: '🏆 Trophy Tip #1: Hover with your cursor over a trophy to see its details.',
-            timeout: false,
-            position: 'tc',
-            status: 'success'
-        });
-    }, 3000);
-
-    setTimeout(() => {
-        new SnackBar({
-            message: '🏆 Trophy Tip #2: Click and swipe a trophy off the table to reset it and try again.',
-            timeout: false,
-            position: 'tc',
-            status: 'success'
-        });
-    }, 3000);
-
-    setTimeout(() => {
-        new SnackBar({
-            message: '🏆 Trophy Tip #3: Double-click a trophy to replay the transaction that unlocked it.',
-            timeout: false,
-            position: 'tc',
-            status: 'success'
-        });
-    }, 3000);
+function hideRulesOnFirstClick() {
+    if (!rulesSection.classList.contains('hidden')) {
+        rulesSection.classList.add('hidden');
+    }
 }
 
 function updateDisplay() {
@@ -114,28 +96,52 @@ function updateDisplay() {
 
 function updateButtonStates() {
     const hasRead = pendingBalance !== null;
-    withdrawBtn.disabled = !hasRead || awaitingGuess;
-    depositBtn.disabled = !hasRead || awaitingGuess;
-    updateBalanceBtn.disabled = bobOperations.length === 0 && bankOperations.length === 0;
+    withdrawBtn.disabled = !hasRead;
+    depositBtn.disabled = !hasRead;
+    updateBalanceBtn.disabled = pendingUpdates.length === 0;
+    updateDropdown.disabled = pendingUpdates.length === 0;
+    finishTransactionBtn.disabled = bobOperations.length === 0 && bankOperations.length === 0;
+}
 
-    // Update button text based on first operation after read
-    if (firstOperationType === 'deposit') {
-        updateBalanceBtn.textContent = 'Update +100 DKK';
-    } else if (firstOperationType === 'withdraw') {
-        updateBalanceBtn.textContent = 'Update -100 DKK';
-    } else {
+function updateDropdownList() {
+    updateDropdown.innerHTML = '';
+    if (pendingUpdates.length === 0) {
+        updateButtonText();
+        return;
+    }
+    pendingUpdates.forEach((update, idx) => {
+        const option = document.createElement('option');
+        option.value = idx;
+        const opType = update.text.includes('Withdraw') ? 'Withdraw' : 'Deposit';
+        option.textContent = `${opType} 100 DKK`;
+        updateDropdown.appendChild(option);
+    });
+    updateButtonText();
+}
+
+function updateButtonText() {
+    if (pendingUpdates.length === 0) {
         updateBalanceBtn.textContent = 'Update Balance';
+        return;
+    }
+    const selectedIdx = updateDropdown.value !== '' ? parseInt(updateDropdown.value) : 0;
+    const update = pendingUpdates[selectedIdx];
+    if (update) {
+        const amount = update.text.includes('Withdraw') ? '-100' : '+100';
+        updateBalanceBtn.textContent = `Update ${amount} DKK`;
     }
 }
 
 function addBobOperation(text, expectedBalance) {
+    const index = bobOperations.length;
     bobOperations.push(text);
     bobOperationBalances.push(expectedBalance);
+    allBobOperations.push(text); // Track across entire transaction
 
     const p = document.createElement('p');
     p.textContent = text;
     p.className = 'operation-item';
-    p.dataset.operationIndex = bobOperations.length - 1;
+    p.dataset.operationIndex = index;
     bobOpsDiv.appendChild(p);
 
     // Add matching spacer to Bank side
@@ -148,6 +154,17 @@ function addBobOperation(text, expectedBalance) {
     requestAnimationFrame(() => {
         spacer.style.height = p.offsetHeight + 'px';
     });
+
+    // Add to pending updates if not already applied
+    if (!appliedUpdateIndices.has(index)) {
+        pendingUpdates.push({
+            index: index,
+            text: text,
+            balance: expectedBalance
+        });
+        updateDropdownList();
+        updateButtonStates();
+    }
 }
 
 function addBankOperation(text) {
@@ -175,12 +192,15 @@ function readBalance() {
     pendingBalance = actualBalance;
     lastReadBalance = actualBalance;
     operationsSinceLastRead = 0;
-    firstOperationType = null; // Reset on each read
 
     // Only set bobBalance if this is the first read (no operations yet)
     if (bobBalance === null) {
         bobBalance = actualBalance;
-        legitimateBalance = actualBalance;
+    }
+
+    // Track starting balance for achievement checking
+    if (transactionStartBalance === null) {
+        transactionStartBalance = actualBalance;
     }
 
     displayedBalance = actualBalance;
@@ -193,71 +213,138 @@ function withdraw() {
     if (isRecording) currentRecording.push('withdraw');
     bobBalance -= 100;
     operationsSinceLastRead++;
+    totalOperationsInTransaction++;
 
-    // Track first operation after read
-    if (operationsSinceLastRead === 1) {
-        firstOperationType = 'withdraw';
-        legitimateBalance = lastReadBalance - 100;
-    }
+    const lastIndex = bobOperations.length;
+    addBobOperation(`Withdraw 100 DKK (Balance now: ${bobBalance} DKK)`, bobBalance);
 
-    addBobOperation(`Withdraw 100 DKK (Balance now: ???)`, bobBalance);
-
-    if (!isReplaying) {
-        awaitingGuess = true;
-        updateButtonStates();
-        promptBalanceGuess();
-    } else {
-        // During replay, just show the correct answer
-        const lastOpElement = bobOpsDiv.querySelector(`p[data-operation-index="${bobOperations.length - 1}"]`);
+    // Update the operation to show the balance
+    const lastOpElement = bobOpsDiv.querySelector(`p[data-operation-index="${lastIndex}"]`);
+    if (lastOpElement) {
         lastOpElement.textContent = `Withdraw 100 DKK (Balance now: ${bobBalance} DKK) ✓`;
         lastOpElement.style.borderLeftColor = '#4CAF50';
     }
+
+    // Add wiggle effect to update button
+    updateBalanceBtn.classList.add('wiggle');
+    setTimeout(() => {
+        updateBalanceBtn.classList.remove('wiggle');
+    }, 500);
 }
 
 function deposit() {
     if (isRecording) currentRecording.push('deposit');
     bobBalance += 100;
     operationsSinceLastRead++;
+    totalOperationsInTransaction++;
 
-    // Track first operation after read
-    if (operationsSinceLastRead === 1) {
-        firstOperationType = 'deposit';
-        legitimateBalance = lastReadBalance + 100;
-    }
+    const lastIndex = bobOperations.length;
+    addBobOperation(`Deposit 100 DKK (Balance now: ${bobBalance} DKK)`, bobBalance);
 
-    addBobOperation(`Deposit 100 DKK (Balance now: ???)`, bobBalance);
-
-    if (!isReplaying) {
-        awaitingGuess = true;
-        updateButtonStates();
-        promptBalanceGuess();
-    } else {
-        // During replay, just show the correct answer
-        const lastOpElement = bobOpsDiv.querySelector(`p[data-operation-index="${bobOperations.length - 1}"]`);
+    // Update the operation to show the balance
+    const lastOpElement = bobOpsDiv.querySelector(`p[data-operation-index="${lastIndex}"]`);
+    if (lastOpElement) {
         lastOpElement.textContent = `Deposit 100 DKK (Balance now: ${bobBalance} DKK) ✓`;
         lastOpElement.style.borderLeftColor = '#4CAF50';
     }
+
+    // Add wiggle effect to update button
+    updateBalanceBtn.classList.add('wiggle');
+    setTimeout(() => {
+        updateBalanceBtn.classList.remove('wiggle');
+    }, 500);
 }
 
-function updateBalance() {
-    if (bobOperations.length === 0) return;
+function applySelectedUpdate() {
+    if (pendingUpdates.length === 0) return;
 
-    // Skip prompt during replay
-    if (isReplaying) {
-        submitFinalBalance();
-    } else {
-        // Prompt for final balance guess
-        promptFinalBalanceGuess();
+    const selectedIdx = updateDropdown.value !== '' ? parseInt(updateDropdown.value) : 0;
+    const selectedUpdate = pendingUpdates[selectedIdx];
+
+    if (!selectedUpdate) {
+        console.error('No update found at index:', selectedIdx, 'pendingUpdates:', pendingUpdates);
+        return;
     }
-}
 
-function submitFinalBalance() {
-    if (isRecording) currentRecording.push('updateBalance');
+    if (isRecording) currentRecording.push(`updateBalance:${selectedIdx}`);
+
     const oldBalance = actualBalance;
-    actualBalance = legitimateBalance; // Bank only applies first operation (Read-Modify-Write race condition)
+    const amount = selectedUpdate.text.includes('Withdraw') ? -100 : 100;
+    actualBalance += amount;
+
     addBankOperation(`Update balance: ${oldBalance} DKK → ${actualBalance} DKK`);
 
-    checkAchievements(oldBalance);
+    // Mark this operation as applied (grey it out)
+    appliedUpdateIndices.add(selectedUpdate.index);
+    const opElement = bobOpsDiv.querySelector(`p[data-operation-index="${selectedUpdate.index}"]`);
+    if (opElement) {
+        opElement.style.opacity = '0.4';
+        opElement.style.textDecoration = 'line-through';
+    }
+
+    // Remove from pending updates
+    pendingUpdates.splice(selectedIdx, 1);
+    updateDropdownList();
+    updateButtonStates();
+
+    // Add wiggle effect to finish transaction button
+    finishTransactionBtn.classList.add('wiggle');
+    setTimeout(() => {
+        finishTransactionBtn.classList.remove('wiggle');
+    }, 500);
+}
+
+function finishTransaction() {
+    if (bobOperations.length === 0 && bankOperations.length === 0) return;
+
+    // Skip prompts during replay
+    if (!isReplaying) {
+        // Calculate actual changes
+        // Bob's gain = cash gained from operations - what was actually applied to account
+        // Operations affect bobBalance, but updates applied affect actualBalance
+        const cashFromOperations = transactionStartBalance - bobBalance; // Money Bob withdrew/deposited
+        const bankApplied = transactionStartBalance - actualBalance; // What bank actually deducted/added
+        const bobChange = cashFromOperations - bankApplied; // Net gain (cash in hand minus account change)
+        const bankChange = actualBalance - transactionStartBalance;
+
+        // Ask about Bob's gain/loss
+        const bobGuess = prompt(`Bob started with ${transactionStartBalance} DKK.\n\nHow much has Bob gained (positive value) or lost (negative value)?`);
+        if (bobGuess === null) return; // User cancelled
+
+        const bobGuessNum = parseInt(bobGuess);
+        if (isNaN(bobGuessNum)) {
+            new SnackBar({
+                message: 'Please enter a valid number',
+                status: 'warning'
+            });
+            return finishTransaction();
+        }
+
+        if (bobGuessNum !== bobChange) {
+            new SnackBar({
+                message: `✗ Incorrect. Bob's change is ${bobChange} DKK. Try again!`,
+                status: 'danger'
+            });
+            return finishTransaction();
+        }
+
+        // Correct answer
+        new SnackBar({
+            message: '✓ Correct! Transaction complete.',
+            status: 'success'
+        });
+    }
+
+    if (isRecording) currentRecording.push('finishTransaction');
+
+    console.log('Finishing transaction:', {
+        transactionStartBalance,
+        actualBalance,
+        totalOperationsInTransaction,
+        allBobOperations
+    });
+
+    checkAchievements(transactionStartBalance);
 
     // Only reset if not replaying (replay will handle reset with delay)
     if (!isReplaying) {
@@ -265,9 +352,22 @@ function submitFinalBalance() {
     }
 }
 
-function checkAchievements(oldBalance) {
-    const operationCount = bobOperations.length;
-    const balanceChange = actualBalance - oldBalance;
+function checkAchievements(startingBalance) {
+    // Calculate total balance change from the starting balance at beginning of transaction
+    const balanceChange = actualBalance - startingBalance;
+
+    // Calculate how many updates were applied
+    const updatesApplied = appliedUpdateIndices.size;
+
+    console.log('Achievement Check:', {
+        startingBalance,
+        actualBalance,
+        balanceChange,
+        totalOperationsInTransaction,
+        updatesApplied,
+        allBobOperations,
+        appliedUpdateIndices: Array.from(appliedUpdateIndices)
+    });
 
     let unlockedAchievements = [];
 
@@ -279,7 +379,7 @@ function checkAchievements(oldBalance) {
     }
 
     // By the Book (single operation with correct result)
-    if (operationCount === 1 && (balanceChange === 100 || balanceChange === -100)) {
+    if (totalOperationsInTransaction === 1 && updatesApplied === 1 && (balanceChange === 100 || balanceChange === -100)) {
         const wasNew = !achievements.byTheBook;
         if (!achievements.byTheBook) {
             achievements.byTheBook = true;
@@ -288,8 +388,9 @@ function checkAchievements(oldBalance) {
         unlockAchievement('By the Book', 'byTheBook', wasNew);
     }
 
-    // Triple Dip (three withdrawals)
-    if (operationCount >= 3 && bobOperations.filter(op => op.includes('Withdraw')).length >= 3) {
+    // Triple Dip (three withdrawals but only one or fewer updates applied)
+    const withdrawCount = allBobOperations.filter(op => op.includes('Withdraw')).length;
+    if (withdrawCount >= 3 && updatesApplied <= 1) {
         const wasNew = !achievements.tripleDip;
         if (!achievements.tripleDip) {
             achievements.tripleDip = true;
@@ -299,9 +400,9 @@ function checkAchievements(oldBalance) {
         unlockAchievement('Triple Dip', 'tripleDip', wasNew);
     }
 
-    // Money Printer (lost more than expected through multiple deposits)
-    const depositCount = bobOperations.filter(op => op.includes('Deposit')).length;
-    if (depositCount >= 2 && balanceChange > 100) {
+    // Money Printer (multiple deposits but bank only applied one update)
+    const depositCount = allBobOperations.filter(op => op.includes('Deposit')).length;
+    if (depositCount >= 2 && updatesApplied === 1 && balanceChange === 100) {
         const wasNew = !achievements.moneyPrinter;
         if (!achievements.moneyPrinter) {
             achievements.moneyPrinter = true;
@@ -311,8 +412,8 @@ function checkAchievements(oldBalance) {
         unlockAchievement('Money Printer', 'moneyPrinter', wasNew);
     }
 
-    // Bob the Robber (negative balance or overdraft)
-    if (actualBalance < 0 || actualBalance < oldBalance - 100) {
+    // Bob the Robber (withdrew more than once but didn't apply all updates)
+    if (withdrawCount >= 2 && updatesApplied < withdrawCount) {
         const wasNew = !achievements.bobTheRobber;
         if (!achievements.bobTheRobber) {
             achievements.bobTheRobber = true;
@@ -332,8 +433,9 @@ function checkAchievements(oldBalance) {
         unlockAchievement('Fat Banker', 'fatBanker', wasNew);
     }
 
-    // Race Condition Master (3+ operations with exploit)
-    if (operationCount >= 3 && (balanceChange !== 100 && balanceChange !== -100 && balanceChange !== 0)) {
+    // Race Condition Master (3+ operations with multiple discrepancies - operations not updated)
+    const discrepancies = totalOperationsInTransaction - updatesApplied;
+    if (totalOperationsInTransaction >= 3 && discrepancies >= 3) {
         const wasNew = !achievements.raceConditionMaster;
         if (!achievements.raceConditionMaster) {
             achievements.raceConditionMaster = true;
@@ -416,7 +518,7 @@ function replayAchievement(achievementKey) {
     resetTransaction();
 
     // Disable buttons during replay
-    const allButtons = [withdrawBtn, depositBtn, readBalanceBtn, updateBalanceBtn];
+    const allButtons = [withdrawBtn, depositBtn, readBalanceBtn, updateBalanceBtn, finishTransactionBtn];
     allButtons.forEach(btn => btn.disabled = true);
 
     // Replay actions with delay
@@ -435,19 +537,29 @@ function replayAchievement(achievementKey) {
         }
 
         const action = replay[index];
-        switch(action) {
-            case 'readBalance':
-                readBalance();
-                break;
-            case 'withdraw':
-                withdraw();
-                break;
-            case 'deposit':
-                deposit();
-                break;
-            case 'updateBalance':
-                updateBalance();
-                break;
+
+        // Handle updateBalance with index (e.g., "updateBalance:0")
+        if (action.startsWith('updateBalance:')) {
+            const updateIdx = parseInt(action.split(':')[1]);
+            if (pendingUpdates[updateIdx]) {
+                updateDropdown.value = updateIdx;
+                applySelectedUpdate();
+            }
+        } else {
+            switch(action) {
+                case 'readBalance':
+                    readBalance();
+                    break;
+                case 'withdraw':
+                    withdraw();
+                    break;
+                case 'deposit':
+                    deposit();
+                    break;
+                case 'finishTransaction':
+                    finishTransaction();
+                    break;
+            }
         }
         index++;
     }, 1000);
@@ -468,10 +580,10 @@ function displayAchievements() {
     const achievementDescriptions = {
         firstSteps: 'Complete your first transaction',
         byTheBook: 'Complete a single legitimate operation',
-        tripleDip: 'Withdraw three times in one transaction',
-        moneyPrinter: 'Let the bank gain money',
-        bobTheRobber: 'Create a negative overdraft',
-        raceConditionMaster: 'Perform 3+ operations in a single transaction',
+        tripleDip: 'Withdraw three times but only apply one or zero updates',
+        moneyPrinter: 'Deposit multiple times but only apply one update',
+        bobTheRobber: 'Withdraw multiple times without applying all updates',
+        raceConditionMaster: 'Perform 3+ operations with 3+ discrepancies (operations not updated)',
         fatBanker: 'Accumulate 1500 DKK or more'
     };
 
@@ -576,134 +688,26 @@ function unlockAchievement(name, id, isNewlyUnlocked) {
     displayAchievements();
 }
 
-function promptBalanceGuess() {
-    const guess = prompt(`What is Bob's balance after this operation?`);
-
-    if (guess === null) {
-        // User cancelled - revert the last operation
-        const lastIndex = bobOperations.length - 1;
-        bobOperations.pop();
-        bobOperationBalances.pop();
-
-        // Remove the last operation element and its corresponding spacer
-        const bobChildren = bobOpsDiv.children;
-        const bankChildren = bankOpsDiv.children;
-        if (bobChildren.length > 0) {
-            bobOpsDiv.removeChild(bobChildren[bobChildren.length - 1]);
-        }
-        if (bankChildren.length > 0) {
-            bankOpsDiv.removeChild(bankChildren[bankChildren.length - 1]);
-        }
-
-        // Revert balance change
-        const lastOp = currentRecording[currentRecording.length - 1];
-        if (lastOp === 'withdraw') {
-            bobBalance += 100;
-        } else if (lastOp === 'deposit') {
-            bobBalance -= 100;
-        }
-
-        operationsSinceLastRead--;
-
-        // Recalculate legitimateBalance based on remaining operations
-        legitimateBalance = lastReadBalance;
-        if (operationsSinceLastRead > 0) {
-            const firstOpIndex = bobOperations.length - 1;
-            if (firstOpIndex >= 0) {
-                const firstOp = bobOperations[firstOpIndex];
-                if (firstOp.includes('Withdraw')) {
-                    legitimateBalance -= 100;
-                } else if (firstOp.includes('Deposit')) {
-                    legitimateBalance += 100;
-                }
-            }
-        }
-
-        if (isRecording) currentRecording.pop();
-
-        awaitingGuess = false;
-        updateButtonStates();
-        return;
-    }
-
-    const guessedBalance = parseInt(guess);
-    const expectedBalance = bobOperationBalances[bobOperationBalances.length - 1];
-
-    if (isNaN(guessedBalance)) {
-        new SnackBar({
-            message: 'Please enter a valid number',
-            status: 'warning'
-        });
-        return promptBalanceGuess();
-    }
-
-    const lastOpElement = bobOpsDiv.querySelector(`p[data-operation-index="${bobOperations.length - 1}"]`);
-    const operationType = bobOperations[bobOperations.length - 1].includes('Withdraw') ? 'Withdraw' : 'Deposit';
-
-    if (guessedBalance === expectedBalance) {
-        lastOpElement.textContent = `${operationType} 100 DKK (Balance now: ${expectedBalance} DKK) ✓`;
-        lastOpElement.style.borderLeftColor = '#4CAF50';
-        awaitingGuess = false;
-        updateButtonStates();
-    } else {
-        lastOpElement.textContent = `${operationType} 100 DKK (Guessed: ${guessedBalance} DKK, Actual: ${expectedBalance} DKK) ✗`;
-        lastOpElement.style.borderLeftColor = '#f44336';
-        new SnackBar({
-            message: `✗ Incorrect. The balance is ${expectedBalance} DKK. Try again!`,
-            status: 'danger'
-        });
-        return promptBalanceGuess();
-    }
-}
-
-function promptFinalBalanceGuess() {
-    const guess = prompt(`Bob's balance is ${bobBalance} DKK.\n\nWhat should the bank's actual balance be if everything was legitimate?\n\nSubmit your answer to complete the transaction.`);
-
-    if (guess === null) {
-        return; // User cancelled
-    }
-
-    const guessedBalance = parseInt(guess);
-
-    if (isNaN(guessedBalance)) {
-        new SnackBar({
-            message: 'Please enter a valid number',
-            status: 'warning'
-        });
-        return promptFinalBalanceGuess();
-    }
-
-    if (guessedBalance === legitimateBalance) {
-        new SnackBar({
-            message: '✓ Correct! Transaction complete.',
-            status: 'success'
-        });
-        submitFinalBalance();
-    } else {
-        new SnackBar({
-            message: `✗ Incorrect. You guessed ${guessedBalance} DKK but the legitimate balance should be ${legitimateBalance} DKK. Try again!`,
-            status: 'danger'
-        });
-        return promptFinalBalanceGuess();
-    }
-}
 
 function resetTransaction() {
     pendingBalance = null;
     bobBalance = null;
-    legitimateBalance = null;
     lastReadBalance = null;
     operationsSinceLastRead = 0;
+    transactionStartBalance = null;
     displayedBalance = '???';
     bobOperations = [];
     bankOperations = [];
     bobOperationBalances = [];
-    awaitingGuess = false;
-    firstOperationType = null;
+    totalOperationsInTransaction = 0;
+    allBobOperations = [];
+    pendingUpdates = [];
+    appliedUpdateIndices.clear();
     bobOpsDiv.innerHTML = '';
     bankOpsDiv.innerHTML = '';
     updateDisplay();
     updateButtonStates();
+    updateDropdownList();
 
     // Restart recording if there are still achievements to unlock
     if (Object.values(achievements).some(val => !val)) {
