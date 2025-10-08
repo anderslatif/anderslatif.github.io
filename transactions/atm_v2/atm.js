@@ -225,11 +225,13 @@ function withdraw() {
         lastOpElement.style.borderLeftColor = '#4CAF50';
     }
 
-    // Add wiggle effect to update button
-    updateBalanceBtn.classList.add('wiggle');
-    setTimeout(() => {
-        updateBalanceBtn.classList.remove('wiggle');
-    }, 500);
+    // Add wiggle effect to update button (skip during replay)
+    if (!isReplaying) {
+        updateBalanceBtn.classList.add('wiggle');
+        setTimeout(() => {
+            updateBalanceBtn.classList.remove('wiggle');
+        }, 500);
+    }
 }
 
 function deposit() {
@@ -248,11 +250,13 @@ function deposit() {
         lastOpElement.style.borderLeftColor = '#4CAF50';
     }
 
-    // Add wiggle effect to update button
-    updateBalanceBtn.classList.add('wiggle');
-    setTimeout(() => {
-        updateBalanceBtn.classList.remove('wiggle');
-    }, 500);
+    // Add wiggle effect to update button (skip during replay)
+    if (!isReplaying) {
+        updateBalanceBtn.classList.add('wiggle');
+        setTimeout(() => {
+            updateBalanceBtn.classList.remove('wiggle');
+        }, 500);
+    }
 }
 
 function applySelectedUpdate() {
@@ -287,11 +291,13 @@ function applySelectedUpdate() {
     updateDropdownList();
     updateButtonStates();
 
-    // Add wiggle effect to finish transaction button
-    finishTransactionBtn.classList.add('wiggle');
-    setTimeout(() => {
-        finishTransactionBtn.classList.remove('wiggle');
-    }, 500);
+    // Add wiggle effect to finish transaction button (skip during replay)
+    if (!isReplaying) {
+        finishTransactionBtn.classList.add('wiggle');
+        setTimeout(() => {
+            finishTransactionBtn.classList.remove('wiggle');
+        }, 500);
+    }
 }
 
 function finishTransaction() {
@@ -400,9 +406,10 @@ function checkAchievements(startingBalance) {
         unlockAchievement('Triple Dip', 'tripleDip', wasNew);
     }
 
-    // Money Printer (multiple deposits but bank only applied one update)
+    // Money Printer (deposit multiple times but only apply one update - Bob loses deposited money)
     const depositCount = allBobOperations.filter(op => op.includes('Deposit')).length;
-    if (depositCount >= 2 && updatesApplied === 1 && balanceChange === 100) {
+    const appliedDepositUpdates = updatesApplied; // Count how many updates were applied
+    if (depositCount >= 2 && appliedDepositUpdates === 1 && balanceChange === 100) {
         const wasNew = !achievements.moneyPrinter;
         if (!achievements.moneyPrinter) {
             achievements.moneyPrinter = true;
@@ -423,8 +430,11 @@ function checkAchievements(startingBalance) {
         unlockAchievement('Bob the Robber', 'bobTheRobber', wasNew);
     }
 
-    // Fat Banker (500+ profit)
-    if (actualBalance >= 1500) {
+    // Fat Banker (lose 500+ DKK by depositing but not applying updates)
+    // If Bob deposited money but updates weren't applied, Bob loses that money
+    const unappliedDeposits = depositCount - (balanceChange / 100);
+    const moneyLost = unappliedDeposits * 100;
+    if (moneyLost >= 500) {
         const wasNew = !achievements.fatBanker;
         if (!achievements.fatBanker) {
             achievements.fatBanker = true;
