@@ -314,7 +314,7 @@ function finishTransaction() {
         const bankChange = actualBalance - transactionStartBalance;
 
         // Ask about Bob's gain/loss
-        const bobGuess = prompt(`Bob started with ${transactionStartBalance} DKK.\n\nHow much has Bob gained (positive value) or lost (negative value)?`);
+        const bobGuess = prompt(`Bob started with ${transactionStartBalance} DKK.\n\nConsidering the difference between Bob's operations and the bank's updates, \nwhat is Bob's total gain (+) or loss (−)?`);
         if (bobGuess === null) return; // User cancelled
 
         const bobGuessNum = parseInt(bobGuess);
