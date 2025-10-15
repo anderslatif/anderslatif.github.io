@@ -3,11 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transactions with Bank Transactions</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <link rel="stylesheet" href="../assets/js-snackbar.min.css">
+    <link rel="stylesheet" href="./atm.css">
+    <title>ATM</title>
 </head>
 <body>
-    <a href="./atm_v1/atm.html">ATM v1</a><br>
-    <a href="./atm_v2/atm.html">ATM v2</a><br>
-    <a href="./multiple_accounts/multiple_accounts.html">Multiple Accounts</a>
+    <div class="centered">
+        <h1>Are you smarter than an ATM?</h1>
+        <span id="rules-link">📜 Rules</span>
+
+        <div id="rules-section" class="rules-section">
+            <h2>The Lost Update Problem</h2>
+
+            <p><strong>The Scenario:</strong> Bob wants to exploit an ATM with a race condition bug. You get to choose which update operation(s) the bank processes!</p>
+
+            <p><strong>How to Play:</strong></p>
+            <ol>
+                <li><strong>Read Balance</strong> - Bank checks the account (starts at <span class="currency">1000 DKK</span>)</li>
+                <li><strong>Bob Operations</strong> - Withdraw or deposit money (Bob gains cash, but bank hasn't updated yet)</li>
+                <li><strong>Update Balance</strong> - Choose only <span class="highlight-number">ONE</span> operation for the bank to process</li>
+                <li><strong>Finish Transaction</strong> - Calculate Bob's profit and unlock achievements</li>
+            </ol>
+
+            <p><strong>Example Exploit:</strong> Bob withdraws <span class="highlight-number">2</span> times (gaining <span class="currency positive">200 DKK</span> cash), but only <span class="highlight-number">ONE</span> withdrawal is applied to his account (losing <span class="currency negative">100 DKK</span>). Bob's Net profit: <span class="currency profit">100 DKK</span>! The bank loses: <span class="currency loss">100 DKK</span>!</p>
+
+            <p><strong>Tips:</strong></p>
+            <ul>
+                <li>Hover over trophies to see requirements</li>
+                <li>Swipe trophies to reset them</li>
+                <li>Double-click trophies to replay</li>
+                <li>Refresh page to reset balance (keeps achievements)</li>
+            </ul>
+        </div>
+    </div>
+
+
+
+
+    <div class="operations">
+        <div>
+            <h1>🧍 Bob Operations</h1>
+            <button id="withdraw">🧍: Withdraw 100 DKK</button>
+            <button id="deposit">🧍: Deposit 100 DKK</button>
+        </div>
+
+        <div>
+            <h1>🏦 Bank Operations</h1>
+            <button id="read-balance">🏧: Read Balance</button>
+            <div class="update-container">
+                <select id="update-dropdown">
+                </select>
+                <button id="update-balance">🏦: Update Balance</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="transactions">
+        <div class="transaction-column">
+            <h3>Bob's Actions</h3>
+            <div id="bob-operations">
+            </div>
+        </div>
+
+        <div class="atm-column">
+            <img src="../ATM.png" alt="ATM">
+            <div class="balance-overlay">
+                <span id="balance">???</span>
+            </div>
+            <div class="finish-container">
+                <button id="finish-transaction">Finish Transaction</button>
+            </div>
+        </div>
+
+        <div class="transaction-column">
+            <h3>Bank's Actions</h3>
+            <div id="bank-operations">
+            </div>
+        </div>
+    </div>
+
+    <div id="achievements">
+    </div>
+
+    <script src="../assets/js-snackbar.min.js"></script>
+    <script src="./atm.js"></script>
 </body>
 </html>
